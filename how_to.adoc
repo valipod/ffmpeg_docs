@@ -1,0 +1,159 @@
+= FFMPEG Documentation
+
+:author: Valentin
+:hardbreaks-option:
+
+== General ideas
+* Formatul general este `ffmpeg [inputs] [mappings] [processing] [output]`
+* Se păstrează ordinea de mai sus (nu se pun `[mappings]` înainte sau între `[inputs]`, etc.)
+
+=== `[inputs]`
+
+Sînt diferitele fișiere pe care trebuie să le proceseze ffmpeg. Se specifică unul după altul, fiecare cu `-i`.
+Eg.: `ffmpeg -i Movie0.mkv -i Movie1.mkv -i Audio.ac3 -i Subtitles.ro.srt`
+
+Pentru concatenare:
+
+* `-i 'concat:file1.mp3|file2.mp3' output.mp3`
+sau
+* `-f concat -i list.txt output.mkv` cu `list.txt` de forma `file bla.avi`` pe fiecare rînd
+
+
+=== `[mappings]`
+Specifică ce luăm din fiecare din fișierele din input și ordinea din output. Din primul se poate lua partea video și o coloană sonoră, din al doilea altă coloană sonoră, altul poate fi un subtitle stream, etc.
+Eg.: `ffmpeg [-i ...] -map 0:v -map 0:a:1 -map 1:a:0 -map 2:0 [...]`.
+
+* Poziția 1 reprezintă numărul inputului, primul este `0`.
+* Următoarea reprezintă tipul de stream la care ne uităm în respectivul input (`v` = video, `a` = audio, `s` = subtitle). Poate lipsi.
+* Următoarea este indexul steamului din respectivul input. Dacă a fost specificat tipul de stream, atunci se uită doar la acel tip, altfel la toate din input
+
+Deci în exemplu luăm video-ul din primul input (va primul stream în output), a doua coloană sonoră din primul input (al doilea stream în output), prima coloană sonoră din al doilea input (al treilea stream în output) și întreg-ul input 3 (următorul(arele) stream(uri) în output).
+
+=== `[processing]`
+Sînt diferitele lucruri care se fac cu conținutul selectat în mappings înainte de a fi redirecționat către output.
+
+* `-c` e specificare de codec
+** `-c copy` - direct stream for everything (recomandat, urmat apoi de eventualele excepții cu recompresie)
+** `-c:a ac3` - recompresie ac3 pentru toate streamurile audio din output
+** `-ac 6` - e-ac3 7.1 -> ac3 5.1:
+** `-c:a:1 libmp3lame -q 2` - similar to `lame -V 2`
+** `-c:a:1 ac3` - recompressie ac3 pentru stream-ul 2 din output
+** `-c:v libx264 crf 16`
+   `-c:v libx265 -preset slow -crf 17`
+   10bit `-c:v libx265 -preset slow -crf 17 -pix_fmt yuv420p10le`
+	 HDR: `-color_range tv -color_primaries 9 -color_trc 16 -colorspace 9` (doar cu `libx265`)
+
+NOTE: Orice stream la care nu e specificat codecul va fi reencodat cu defaulturi.
+Eg. la subtitrări cu `ASS`
+
+* `-metadata:s:a:0 language=ron` - specificare limbă pentru primul **s**tream **a**udio din output (fre, ger, eng, ron link:https://en.wikipedia.org/wiki/List_of_ISO_639-2_codes[iso 639-2])
+* `-metadata:s:a:0 title="English comments by the director"`
+* `-disposition:a:1 default` face default al doilea stream de audio
+* `-disposition:a:0 dub` marchează primul stream de audio ca fiind dub, deci nu default
+* adăugare capitole:
+  `-i metadatafile -map_metadata <number>` - unde `<number>` e numărul inputului cu chapters.txt.
+	(see link:https://www.ffmpeg.org/ffmpeg-formats.html#Metadata-1[ffmpeg howto - format capitole] and example target format in this repo,
+	link:https://ikyle.me/blog/2020/add-mp4-chapters-ffmpeg[Kyle Howells page with python script for coverting chapters file] and costomised script and required source format - easily obtainable from megui chapter extractor - in this repo)
+
+Video
+
+* Crop 10px stînga dreapta, 20px sus și jos:
+	`-vf "crop=in_w-2*10:in_h-2*20"`
+* Crop 280px sus și jos:
+	`-vf "crop=w=in_w:h=in_h-2*280"`
+* Crop 640x480 începînd de la 10 stînga, 20 sus:
+	`-vf "crop=w=640:h=480:x=10:y=20"`
+* Resize:
+	`-vf scale=1920:1080` (`-vf scale=1920x1080:flags=lanczos`)
+  eventual forțare de aspect ratio:
+	`-vf scale=1920x1080:flags=lanczos,setdar=dar=1920/1080`
+* Specificare număr de frame-uri după care să oprească encodingul (ex. for testing results):
+	`-frames:v 500`
+* *remove logo*, de preferință înainte de crop, pentru că există o bandă de 1px si deci nu se poate seta `y=0`. Apoi se face crop (`w:h:x:y``):
+  `ffmpeg -i video.mkv -vf "delogo=x=1707:y=43:w=109:h=119,crop=1904:816:12:132"`
+  dacă video-ul (în exemplu 1920x800) vine deja cropped cu logoul îcepînd de la y=0, atunci delogo trebuie ajutat cu niște content deasupra marginii (mode=mirror trebuie ca să avem acelasi content și 'deasupra'):
+	`ffmpeg -i video.mkv
+	-vf "pad=1920:1080:0:(oh-ih)/2,
+       fillborders=left=0:right=0:top=140:bottom=140:mode=mirror,
+       delogo=x=1705:y=100:w=113:h=70:show=0,
+       crop=w=1920:h=800:x=0:y=140"
+  -map 0:v:0 -map 0:a:0 -c copy -c:v libx264 -crf 17
+	output.mkv`
+* Mutare zonă (`376x144`` de la `x=1544, y=936`) în altă parte, și apoi crop la `1280x720` la `x=420, y=140` (request de la Miruna):
+  `ffmpeg -i input.mp4 -vf "split=2[pip][full];[pip]crop=376:144:1544:936[pip];[full][pip]overlay=1340:720,crop=1280:720:420:140" -c libx264 -crf 18 output.mp4`
+* Schimbare viteză (=skip de frames)
+  `-itsscale 0.25 înseamnă de 4x`
+
+Audio
+
+* delay de audio (video din `movie1`, audio din `movie2`, delayed `3.84` secunde):
+`-i movie1.mkv -itsoffset 3.84 -i movie2.mkv -map 0:v:0 -map 1:a:0`
+sau
+DISCARD de audio (video din `movie1`, audio din `movie2`, cropped `3.84` secunde și moved backward):
+`-i movie1.mkv -ss 3.84 -i movie2.mkv -map 0:v:0 -map 1:a:0`
+* schimbare fps de la 25 la 23.976216:
+  `-i film.mkv -filter_complex "[0:a]atempo=0.95904864[out]" -map "[out]" -c ac3 audio_23.976.ac3`
+  resp. de la 23.976216 la 25:
+	`-i film.mkv -filter_complex "[0:a]atempo=1.0426999[out]" -map "[out]" -c ac3 audio_25.ac3`
+	Într-un pas cu merge în alt film ar fi:
+	`ffmpeg -i Movie23.976.EnglishAudio.mkv -i Movie25.RomanianAudio.mkv -map 0:v -map 0:a:0
+	-filter_complex "[1:a:0]atempo=0.95904864[out]" -map "[out]" -c copy -c:a:1 ac3
+	Movie23.976.EnglishRomanianAudio.mkv`
+* lpcm_bluray audio nu merge în mkv, trebuie convertit la pcm_wav:
+  `-c:a pcm_s24le`
+
+==== Error troubleshooting
+* eroare de timestamp:
+  `-fflags +genpts -i Movie.mkv`
+* fix badly encoded avi:
+  `-bsf:v mpeg4_unpack_bframes`
+* fix "Starting new cluster due to timestamp" (care face silent audio pentru o perioadă):
+	`-max_interleave_delta 0`
+* DTS stream error shit (Non-monotonous DTS in output stream) - dar de evitat:
+	`-use_wallclock_as_timestamps 1` - pare să meargă (adică nu mai apare warn-ul), dar e lent!
+	`-fflags +igndts`
+
+=== `[output]`
+E [calea]numele fișierului rezultat.
+
+NOTE: Extensia este parsată și ffmpeg verifică dacă anumite stream-uri sînt compatibile cu containerul ales pentru output. Eg. pentru `output.mp4` nu va permite un stream audio `ac3`.
+
+== Automatizări
+
+=== Shell for mai multe filme din folder
+`for f in *.mkv;
+ do ff -i "${f}" -i "${f%.mkv}.ro.srt" -map 0:v:0 -map 0:a:0 -map 1:0 -metadata:s:s:0 language=ron -c copy -max_interleave_delta 0
+ "../Seriale/Better Things/Season 4/${f}";
+ done`
+
+=== Shell for mai multe filme in subfolders
+----
+`for file in Folder/**/*.mkv; do ff -i ${file} blabla; done`
+`for file in Folder/**/**/*.mkv; do ff -i ${file} blabla; done`
+`for file in Folder/**/**/**/*.mkv; do ff -i ${file} blabla; done`
+etc.
+----
+
+O comandă oareșce complexă ar fi:
+
+`ffmpeg
+  -i movie1.mkv -i movie2.mkv
+  -i audio1.eac3 -i audio2.ac3
+  -i subtitle1.srt -i subtitle2.srt` - stabilim 6 surse de input:
+  `-c copy` - stabilim direct stream ca default
+  `-map 0:v[:0]` - ia video din movie1 (input 0)
+  `-map 1:a:1` - a doua coloană sonoră din movie2 (input 1)
+  `-metadata:s:a:0 language=ron` - setăm limba pentru primul **s**tream **a**udio din output (`0`)
+  `-disposition:a:0 dub` - set dub, ca să nu fie played default
+  `-map 2:0` - coloana sonoră din input 2
+  `-c:a:1 ac3` - reencode eac3 to ac3, va fi al doilea stream audio din output (`1`)
+  `-metadata:s:a:1 language=ger` - set Germană
+  `-disposition:a:1 dub` - set dub, ca să nu fie played default
+  `-map 3:a:0` - coloana sonoră din input 3
+  `-metadata:s:a:2 language=eng` set English, va fi al treilea stream audio din output (`2`)
+  `-disposition:a:2 default` - set default playing audio stream
+  `-map 4[:s]:0` - inputul 4 va fi primul stream de subtitrări, fiind direct subtitrare, nu e nevoie să specificăm partea cu `:s`
+	`-metadata:s:s:0 language=ron` - set language Română
+	`-map 5[:s]:0` - inputul 5 va fi al doilea de subtitrări, fiind direct subtitrare, nu e nevoie să specificăm partea cu `:s`
+	`-metadata:s:s:1 language=eng` - set language English
+	`Out.mkv` - fișierul rezultat
