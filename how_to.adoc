@@ -109,7 +109,9 @@ DISCARD de audio (video din `movie1`, audio din `movie2`, cropped `3.84` secunde
   `-bsf:v mpeg4_unpack_bframes`
 * fix "Starting new cluster due to timestamp" (care face silent audio pentru o perioadă):
 	`-max_interleave_delta 0`
-* DTS stream error shit (Non-monotonous DTS in output stream) - dar de evitat:
+* DTS stream error shit (Non-monotonous DTS in output stream):
+	`-af aresample=async=0`
+- altele care nu prea merg (de evitat):
 	`-use_wallclock_as_timestamps 1` - pare să meargă (adică nu mai apare warn-ul), dar e lent!
 	`-fflags +igndts`
 
