@@ -44,12 +44,13 @@ Sînt diferitele lucruri care se fac cu conținutul selectat în mappings înain
 	 HDR: `-color_range tv -color_primaries 9 -color_trc 16 -colorspace 9` (doar cu `libx265`)
 
 NOTE: Orice stream la care nu e specificat codecul va fi reencodat cu defaulturi.
-Eg. la subtitrări cu `ASS`
+Eg. la subtitrări cu `ASS`, audio cu vorbis, etc.
 
 * `-metadata:s:a:0 language=ron` - specificare limbă pentru primul **s**tream **a**udio din output (fre, ger, eng, ron link:https://en.wikipedia.org/wiki/List_of_ISO_639-2_codes[iso 639-2])
 * `-metadata:s:a:0 title="English comments by the director"`
 * `-disposition:a:1 default` face default al doilea stream de audio
 * `-disposition:a:0 dub` marchează primul stream de audio ca fiind dub, deci nu default
+* `-disposition:a:1 0` șterge orice disposition era înainte, asta dacă nu vrei să pui dub/default/origina/ceva
 * adăugare capitole:
   `-i metadatafile -map_metadata <number>` - unde `<number>` e numărul inputului cu chapters.txt.
 	(see link:https://www.ffmpeg.org/ffmpeg-formats.html#Metadata-1[ffmpeg howto - format capitole] and example target format in this repo,
