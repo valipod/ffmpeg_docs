@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import re
 
 chapters = list()
@@ -5,6 +6,10 @@ chapters = list()
 with open('chapters.txt', 'r') as f:
     for line in f:
         x = re.match(r"(\S{7}\d{2})=(\d{2}):(\d{2}):(\d{2})\.(\d{3})", line)
+        if not x:
+            # every other line doesn't contain any new information but
+            # is formatted differently
+            continue
         title = x.group(1)
         hrs = int(x.group(2))
         mins = int(x.group(3))
