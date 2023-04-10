@@ -29,7 +29,8 @@ with open('chapters.txt', 'r') as f:
             chap["title"] = title
             chapters.append(chap)
 
-text = ""
+text = """;FFMETADATA1
+"""
 
 template = """
 [CHAPTER]
