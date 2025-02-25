@@ -41,7 +41,8 @@ Sînt diferitele lucruri care se fac cu conținutul selectat în mappings înain
 ** `-c:v libx264 crf 16`
    `-c:v libx265 -preset slow -crf 17`
    10bit `-c:v libx265 -preset slow -crf 17 -pix_fmt yuv420p10le`
-	 HDR: `-color_range tv -color_primaries 9 -color_trc 16 -colorspace 9` (doar cu `libx265`)
+   HDR: `-color_range tv -color_primaries 9 -color_trc 16 -colorspace 9` (doar cu `libx265`)
+   nvidia hw: -c:v h264_nvenc -preset:v p7 -tune:v hq -rc:v vbr -cq:v 18 -b:v 0 -profile:v high
 
 NOTE: Orice stream la care nu e specificat codecul va fi reencodat cu defaulturi.
 Eg. la subtitrări cu `ASS`, audio cu vorbis, etc.
