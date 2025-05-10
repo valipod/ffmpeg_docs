@@ -139,6 +139,9 @@ NOTE: Extensia este parsată și ffmpeg verifică dacă anumite stream-uri sînt
 etc.
 ----
 
+=== PowerShell for mai multe filme din folder
+`Get-ChildItem *.avi | ForEach-Object { ffmpeg -i "$($_.FullName)" -i "$($_.FullName -replace '\.avi$', '.ro.srt')" -i "$($_.FullName -replace '\.avi$', '.en.srt')" -map 0:v -map 0:a -map 1:0 -map 2:0 -metadata:s:a:0 language=eng -metadata:s:s:0 language=ron -metadata:s:s:1 language=eng -c copy -c:v libx264 -crf 17 "$($_.FullName -replace '\.avi$', '.mkv')"}`
+
 O comandă oareșce complexă ar fi:
 
 `ffmpeg
