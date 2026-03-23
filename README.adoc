@@ -57,6 +57,11 @@ Eg. la subtitrări cu `ASS`, audio cu vorbis, etc.
 	(see link:https://www.ffmpeg.org/ffmpeg-formats.html#Metadata-1[ffmpeg howto - format capitole] and example target format in this repo,
 	link:https://ikyle.me/blog/2020/add-mp4-chapters-ffmpeg[Kyle Howells page with python script for coverting chapters file] and costomised script and required source format - easily obtainable from megui chapter extractor - in this repo)
 
+==== '[output cu un frame pe video, făcut doar pentru sunet]'
+
+- `-loop 1 -i cover.jpg -i "sunet.mp3" -c:v libx264 -crf 18 -tune
+  stillimage -c:a libfdk_aac -vbr 4 -pix_fmt yuv420p -shortest output.mp4` unde loop 1 este loop pentru primul input, în cazul de față poza. `-shortest` de obice oprește encoding-ul la cel mai scurt input, care în combinație cu `-loop` a devenit audio-ul, pentru că imaginea e infinit loop.
+
 Video
 
 * Crop 10px stînga dreapta, 20px sus și jos:
